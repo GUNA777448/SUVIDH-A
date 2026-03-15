@@ -1,0 +1,11 @@
+name,email,mobile,consumerid,aadhar,address,city,state,pincode
+Guru Nadharao,gurunadharao5718@gmail.com,9000000001,12345678,123412341234,123 Main St,Hyderabad,Telangana,500001
+Asha Reddy,asha.reddy@example.com,9000000002,23456789,234523452345,456 Lake Rd,Bangalore,Karnataka,560001
+Ravi Kumar,ravi.kumar@example.com,9000000003,34567890,345634563456,789 Hill St,Chennai,Tamil Nadu,600001
+Priya Sharma,priya.sharma@example.com,9000000004,45678901,456745674567,321 River Rd,Mumbai,Maharashtra,400001
+Suresh Patel,suresh.patel@example.com,9000000005,56789012,567856785678,654 Park Ave,Ahmedabad,Gujarat,380001
+Meena Joshi,meena.joshi@example.com,9000000006,67890123,678967896789,987 Green Ln,Pune,Maharashtra,411001
+Anil Singh,anil.singh@example.com,9000000007,78901234,789078907890,159 Blue St,Jaipur,Rajasthan,302001
+Lakshmi Rao,lakshmi.rao@example.com,9000000008,89012345,890189018901,753 Red Rd,Vijayawada,Andhra Pradesh,520001
+Deepak Verma,deepak.verma@example.com,9000000009,90123456,901290129012,852 White St,Delhi,Delhi,110001
+Sunita Das,sunita.das@example.com,9000000010,12348765,123498765432,951 Yellow St,Kolkata,West Bengal,700001
