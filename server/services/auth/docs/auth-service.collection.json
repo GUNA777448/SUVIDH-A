@@ -1,0 +1,461 @@
+{
+  "info": {
+    "_postman_id": "2d92c1a8-9625-4aaf-a669-4de51a8b8e4f",
+    "name": "SUVIDHA Auth Service API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for versioned auth endpoints with automated test cases."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4009"
+    },
+    {
+      "key": "identifierType",
+      "value": "M"
+    },
+    {
+      "key": "identifierValue",
+      "value": "6300614592"
+    },
+    {
+      "key": "otp",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "aadhar",
+      "value": "123456789012"
+    },
+    {
+      "key": "consumerId",
+      "value": "10000001"
+    },
+    {
+      "key": "otpAadhar",
+      "value": ""
+    },
+    {
+      "key": "otpConsumer",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Service Smoke",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Service is auth', function () { pm.expect(body.service).to.eql('auth'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Health payload is valid', function () {",
+                  "  pm.expect(body.status).to.eql('OK');",
+                  "  pm.expect(body.timestamp).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Login OTP Request",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/login/otp - Invalid identifierType",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"X\",\n  \"identifierValue\": \"6300614592\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Error code is INVALID_IDENTIFIER', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error.code).to.eql('INVALID_IDENTIFIER');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login/otp - User not found",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"C\",\n  \"identifierValue\": \"99999999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Error code is USER_NOT_FOUND', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error.code).to.eql('USER_NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login/otp - Success (Mobile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"{{identifierType}}\",\n  \"identifierValue\": \"{{identifierValue}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('OTP response envelope is valid', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data.consumerId).to.be.a('string');",
+                  "  pm.expect(body.data.otpExpiresAt).to.be.a('string');",
+                  "});",
+                  "if (body.data.otp) { pm.collectionVariables.set('otp', body.data.otp); }",
+                  "pm.collectionVariables.set('identifierType', body.data.identifierType);",
+                  "pm.collectionVariables.set('identifierValue', body.data.identifierValue);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login/otp - Success (Aadhar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"A\",\n  \"identifierValue\": \"{{aadhar}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body.data.otp) { pm.collectionVariables.set('otpAadhar', body.data.otp); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login/otp - Success (Consumer ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"C\",\n  \"identifierValue\": \"{{consumerId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body.data.otp) { pm.collectionVariables.set('otpConsumer', body.data.otp); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Login OTP Verify",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/login/verify - Invalid OTP format",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"M\",\n  \"identifierValue\": \"6300614592\",\n  \"otp\": \"12\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "verify"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Error code is INVALID_OTP', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error.code).to.eql('INVALID_OTP');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login/verify - Wrong OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"{{identifierType}}\",\n  \"identifierValue\": \"{{identifierValue}}\",\n  \"otp\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "verify"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.response.to.have.status(401); });",
+                  "const body = pm.response.json();",
+                  "pm.test('OTP rejection code is returned', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error.code).to.match(/^OTP_/);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login/verify - Success (Mobile)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('otp')) {",
+                  "  throw new Error('otp variable is empty. Run request OTP success test first.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Token and user are present', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data.tokenType).to.eql('Bearer');",
+                  "  pm.expect(body.data.accessToken).to.be.a('string');",
+                  "  pm.expect(body.data.user.consumerId).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('accessToken', body.data.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"{{identifierType}}\",\n  \"identifierValue\": \"{{identifierValue}}\",\n  \"otp\": \"{{otp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "verify"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/login/verify - Reuse OTP should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifierType\": \"{{identifierType}}\",\n  \"identifierValue\": \"{{identifierValue}}\",\n  \"otp\": \"{{otp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login", "verify"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.response.to.have.status(401); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Reuse OTP rejected', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error.code).to.eql('OTP_NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

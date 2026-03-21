@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums are great for civic services to strictly control allowed values
+enum ConnectionType {
+  DOMESTIC
+  COMMERCIAL
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AddressType {
+  SERVICE  // Where the physical connection/delivery is
+  BILLING  // Where the bills go
+}
+
+model User {
+  // Primary Key
+  consumerId      String          @id @db.Char(8) 
+  
+  // Core Details
+  fullName        String          @db.VarChar(30)
+  dob             DateTime        @db.Date        
+  gender          String          @db.Char(1)     
+  mobile          String          @unique @db.Char(10) 
+  aadhar          String?         @unique @db.Char(12)
+  email           String          @unique @db.VarChar(50)
+  
+  // Utility Specifics
+  kycStatus       KycStatus       @default(PENDING)
+  connectionType  ConnectionType  @default(DOMESTIC)
+  isActive        Boolean         @default(true)
+  
+  // Relations
+  addresses       Address[]     
+  sessions        UserSession[] 
+
+  // Metadata
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model UserSession {
+  id              String          @id @default(uuid())
+  consumerId      String          @db.Char(8)
+  
+  token           String          @unique @db.VarChar(256)
+  expiry          DateTime 
+  
+  user            User            @relation(fields: [consumerId], references: [consumerId], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+}
+
+model Address {
+  id              String          @id @default(uuid())
+  consumerId      String          @db.Char(8)
+  
+  // Utility classification
+  addressType     AddressType     @default(SERVICE)
+  
+  // Core Address 
+  line1           String   
+  line2           String?  
+  landmark        String?  
+  city            String   
+  district        String?  
+  state           String   
+  pincode         String          @db.VarChar(6) 
+  
+  // Useful for delivery routing or pipeline mapping
+  latitude        Float?   
+  longitude       Float?   
+  
+  // Metadata
+  isDefault       Boolean         @default(false) 
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user            User            @relation(fields: [consumerId], references: [consumerId], onDelete: Cascade)
+
+  // A user shouldn't have two 'default' addresses of the same type
+  @@unique([consumerId, addressType, isDefault])
+}
