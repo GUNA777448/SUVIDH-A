@@ -1,0 +1,103 @@
+version: "3.8"
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: suvidha-client
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:4009
+      - VITE_AUTH_API_PREFIX=/api/v1/auth
+    depends_on:
+      - api-gateway
+    networks:
+      - suvidha-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: suvidha-api-gateway
+    ports:
+      - "4009:4009"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./server/services/auth
+      dockerfile: Dockerfile
+    container_name: suvidha-auth-service
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://user:password@postgres:5432/suvidha_auth
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - suvidha-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: suvidha-postgres
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=suvidha_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - suvidha-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: suvidha-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - suvidha-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  suvidha-network:
+    driver: bridge

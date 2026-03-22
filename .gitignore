@@ -9,12 +9,18 @@ pnpm-lock.yaml
 .env.local
 .env.*.local
 .env.production.local
+!.env.docker.example
 
 # Build outputs
 dist/
 dist-ssr/
 *.local
 build/
+
+# Docker
+.env.docker
+.env.docker.prod
+docker-compose.override.yml
 
 # IDE and Editor
 .vscode/
