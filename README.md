@@ -39,32 +39,21 @@ SUVIDHA is a unified civic service kiosk platform for Indian urban utility offic
 
 ```
 SUVIDHA/
-├── client/                        # React + Vite frontend
-│   ├── src/                      # Source code (MVC, components, hooks, etc.)
-│   ├── public/                   # Static assets
-│   └── package.json              # Frontend dependencies
-├── server/                        # Backend microservices
-│   ├── api-gateway/              # API Gateway (Kong/Express)
-│   ├── services/                 # Microservices (auth, electricity, etc.)
-│   │   ├── auth-service/         # Auth (OTP, JWT, Prisma, NeonDB)
-│   │   ├── electricity-service/  # Electricity domain
-│   │   ├── gas-distribution-service/
-│   │   ├── water-service/
-│   │   ├── waste-management-service/
-│   │   ├── payment-gateway-service/
-│   │   ├── grievance-service/
-│   │   ├── document-service/
-│   │   └── notification-service/
-│   └── shared/                   # Shared utilities
-├── docs/                         # Documentation (architecture, db, api, samples)
+├── api-gateway/                  # API gateway service
+├── client/                       # React + Vite frontend
+├── server/                       # Backend services
+├── docs/                         # Documentation
 │   ├── architecture/
 │   ├── database/
-│   ├── api/
-│   └── samples/
-├── scripts/                      # Utility scripts (seeding, migration)
-├── infrastructure/               # Deployment configs (Docker, CI/CD)
+│   ├── deployment/
+│   │   └── DOCKER-SETUP.md
+│   └── scratch/
+├── scripts/                      # Root-level utility scripts
+│   ├── docker-helper.sh
+│   └── docker-helper.bat
 ├── docker-compose.yml            # Container orchestration
-└── package.json                  # Root dependencies
+├── .env.docker.example           # Docker environment template
+└── README.md
 ```
 
 ## 🚀 Quick Start
