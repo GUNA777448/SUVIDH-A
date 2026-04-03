@@ -1,342 +1,178 @@
-import { type FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { authApi } from "../../api/authApi";
-import { ApiClientError } from "../../types/api";
-import type { IdentifierType } from "../../types/user";
+import { useEffect } from "react";
+import { Phone } from "lucide-react";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { OtpInput } from "../../components/ui/otp-input";
 import { useAuthStore } from "../../stores/authStore";
-import { useUserStore } from "../../stores/userStore";
-import { parseJwtPayload } from "../../utils/jwt";
-
-type IdentifierMeta = {
-  title: string;
-  subtitle: string;
-  placeholder: string;
-  helper: string;
-  maxLength: number;
-  inputMode: "text" | "numeric";
-};
-
-const identifierMetaMap: Record<IdentifierType, IdentifierMeta> = {
-  M: {
-    title: "Mobile Number",
-    subtitle: "Login with your registered mobile.",
-    placeholder: "Enter 10-digit mobile number",
-    helper: "Only digits are allowed.",
-    maxLength: 10,
-    inputMode: "numeric",
-  },
-  A: {
-    title: "Aadhar Number",
-    subtitle: "Use your linked 12-digit Aadhar.",
-    placeholder: "Enter 12-digit Aadhar number",
-    helper: "Only digits are allowed.",
-    maxLength: 12,
-    inputMode: "numeric",
-  },
-  C: {
-    title: "Consumer ID",
-    subtitle: "Use your SUVIDHA consumer identifier.",
-    placeholder: "Enter Consumer ID (e.g. CON1001)",
-    helper: "Use letters, numbers, hyphen, or underscore.",
-    maxLength: 24,
-    inputMode: "text",
-  },
-};
-
-const sanitizeIdentifierValue = (
-  type: IdentifierType,
-  value: string,
-): string => {
-  if (type === "M" || type === "A") {
-    return value.replace(/\D/g, "");
-  }
-  return value.replace(/\s+/g, "").toUpperCase();
-};
-
-const validateIdentifierValue = (
-  type: IdentifierType,
-  value: string,
-): string | null => {
-  if (type === "M" && !/^\d{10}$/.test(value)) {
-    return "Mobile number must be exactly 10 digits.";
-  }
-  if (type === "A" && !/^\d{12}$/.test(value)) {
-    return "Aadhar number must be exactly 12 digits.";
-  }
-  if (type === "C" && !/^[A-Z0-9_-]{4,24}$/.test(value)) {
-    return "Consumer ID must be 4-24 characters and use only letters, numbers, hyphen, or underscore.";
-  }
-  return null;
-};
-
-const sanitizeOtp = (value: string): string =>
-  value.replace(/\D/g, "").slice(0, 6);
+import { Navigate } from "react-router-dom";
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const setToken = useAuthStore((state) => state.setToken);
-  const setUser = useUserStore((state) => state.setUser);
+  const {
+    step,
+    mobile,
+    otp,
+    isSending,
+    isVerifying,
+    error,
+    countdown,
+    setMobile,
+    setOtp,
+    sendOtp,
+    verifyOtp,
+    resendOtp,
+    reset,
+    tick,
+  } = useAuthStore();
 
-  const [identifierType, setIdentifierType] = useState<IdentifierType>("M");
-  const [identifierValue, setIdentifierValue] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpRequested, setOtpRequested] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleRequestOtp = async (event: FormEvent) => {
-    event.preventDefault();
-    const cleanedIdentifierValue = sanitizeIdentifierValue(
-      identifierType,
-      identifierValue,
-    ).slice(0, identifierMetaMap[identifierType].maxLength);
-    const validationError = validateIdentifierValue(
-      identifierType,
-      cleanedIdentifierValue,
-    );
-
-    setIdentifierValue(cleanedIdentifierValue);
-    setMessage("");
-    setError("");
-    if (validationError) {
-      setError(validationError);
+  useEffect(() => {
+    if (step !== "otp" || countdown <= 0) {
       return;
     }
 
-    setLoading(true);
+    const timer = window.setInterval(() => {
+      tick();
+    }, 1000);
 
-    try {
-      const data = await authApi.requestOtp({
-        identifierType,
-        identifierValue: cleanedIdentifierValue,
-      });
-      setOtpRequested(true);
-      setMessage(
-        `OTP requested. Expires at ${new Date(data.otpExpiresAt).toLocaleTimeString()}`,
-      );
+    return () => window.clearInterval(timer);
+  }, [step, countdown, tick]);
 
-      if (data.otp) {
-        setOtp(data.otp);
-      }
-    } catch (err) {
-      const requestError = err as ApiClientError;
-      setError(requestError.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (event: FormEvent) => {
-    event.preventDefault();
-    const cleanedOtp = sanitizeOtp(otp);
-    setOtp(cleanedOtp);
-    setMessage("");
-    setError("");
-    if (!/^\d{6}$/.test(cleanedOtp)) {
-      setError("OTP must be exactly 6 digits.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const data = await authApi.verifyOtp({
-        identifierType,
-        identifierValue,
-        otp: cleanedOtp,
-      });
-
-      const payload = parseJwtPayload(data.accessToken);
-      const issuedAt = payload?.iat
-        ? new Date(payload.iat * 1000).toISOString()
-        : undefined;
-
-      setToken(data.accessToken);
-      setUser({
-        ...data.user,
-        identifierType,
-        identifierValue,
-        tokenIssuedAt: issuedAt,
-        tokenExpiresAt: data.expiresAt,
-      });
-      navigate("/profile");
-    } catch (err) {
-      const requestError = err as ApiClientError;
-      setError(requestError.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (step === "success") {
+    return <Navigate to="/home" replace />;
+  }
 
   return (
-    <section className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.15fr_1fr]">
-      <aside className="glass-panel relative overflow-hidden rounded-2xl p-6 sm:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-amber-300/15 blur-3xl" />
-
-        <p className="theme-pill">Trusted Citizen Access</p>
-        <h1 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
-          Welcome back to
-          <span className="block text-cyan-300">SUVIDHA Services</span>
-        </h1>
-        <p className="mt-4 max-w-xl text-sm text-slate-300 sm:text-base">
-          Secure OTP authentication for utility and civic services. Pick your
-          preferred identifier, request a one-time password, and continue to
-          your profile in under a minute.
-        </p>
-
-        <div className="mt-7 grid gap-3 text-sm text-slate-200">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="font-semibold text-white">Step 1</p>
-            <p className="mt-1 text-slate-300">
-              Select identifier type and submit your details.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="font-semibold text-white">Step 2</p>
-            <p className="mt-1 text-slate-300">
-              Receive a 6-digit OTP on your registered contact.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="font-semibold text-white">Step 3</p>
-            <p className="mt-1 text-slate-300">
-              Verify OTP to access your dashboard and profile.
-            </p>
-          </div>
-        </div>
-      </aside>
-
-      <div className="theme-card p-5 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Login</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              OTP-based sign-in for Mobile, Aadhar, or Consumer ID.
-            </p>
-          </div>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              otpRequested
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            {otpRequested ? "OTP Sent" : "Awaiting Request"}
-          </span>
-        </div>
-
-        <form onSubmit={handleRequestOtp} className="mt-6 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(["M", "A", "C"] as IdentifierType[]).map((type) => {
-              const active = identifierType === type;
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => {
-                    setIdentifierType(type);
-                    setIdentifierValue("");
-                    setOtp("");
-                    setOtpRequested(false);
-                    setMessage("");
-                    setError("");
-                  }}
-                  className={`rounded-xl border px-3 py-2 text-left transition ${
-                    active
-                      ? "border-cyan-400 bg-cyan-50 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
+    <main className="auth-bg min-h-screen w-full px-4 py-6 sm:py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center justify-center">
+        <section className="auth-panel w-full">
+          <Card className="auth-card w-full p-5 sm:p-7 md:p-8">
+            <div className="govt-banner mb-5">
+              <div className="india-tricolor" />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="chakra-mark" aria-hidden />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-900">
+                      Government of India Services
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      SUVIDHA Digital Citizen Access Portal
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className="india-badge"
+                  aria-label="India themed badge"
+                  title="India themed badge"
                 >
-                  <p className="text-xs font-semibold text-slate-500">{type}</p>
-                  <p className="mt-0.5 text-sm font-semibold text-slate-800">
-                    {identifierMetaMap[type].title}
+                  GOV.IN
+                </div>
+              </div>
+            </div>
+
+            <>
+              <CardHeader>
+                <p className="mb-2 inline-flex w-fit rounded-full border border-[#c9d5e7] bg-[#eef4fb] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0b2e59]">
+                  Suvidha Login
+                </p>
+                <CardTitle className="font-display text-3xl text-[#0b2e59]">
+                  {step === "mobile" ? "Login" : "Verify OTP"}
+                </CardTitle>
+                <CardDescription className="text-slate-700">
+                  {step === "mobile"
+                    ? "Enter your registered mobile number to continue."
+                    : `OTP sent to +91 ${mobile}.`}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-5">
+                {step === "mobile" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="mobile">Mobile number</Label>
+                    <div className="relative">
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+                      <Input
+                        id="mobile"
+                        type="tel"
+                        placeholder="9876543210"
+                        value={mobile}
+                        onChange={(event) =>
+                          setMobile(
+                            event.target.value.replace(/\D/g, "").slice(0, 10),
+                          )
+                        }
+                        className="pl-9 border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus-visible:border-[#1f6aa5] focus-visible:ring-[#1f6aa5]/35"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="otp">One-time password</Label>
+                    <OtpInput value={otp} onChange={setOtp} />
+                  </div>
+                )}
+
+                {error ? (
+                  <p className="rounded-xl border border-[#f3c8c3] bg-[#fff3f2] px-3 py-2 text-sm text-[#b42318]">
+                    {error}
                   </p>
-                </button>
-              );
-            })}
-          </div>
+                ) : null}
+              </CardContent>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-            <p className="text-sm font-semibold text-slate-800">
-              {identifierMetaMap[identifierType].title}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {identifierMetaMap[identifierType].subtitle}
-            </p>
-
-            <label className="mt-3 block text-sm font-medium text-slate-700">
-              Identifier Value
-              <input
-                value={identifierValue}
-                onChange={(event) =>
-                  setIdentifierValue(
-                    sanitizeIdentifierValue(
-                      identifierType,
-                      event.target.value,
-                    ).slice(0, identifierMetaMap[identifierType].maxLength),
-                  )
-                }
-                inputMode={identifierMetaMap[identifierType].inputMode}
-                placeholder={identifierMetaMap[identifierType].placeholder}
-                className="theme-input mt-1"
-                required
-              />
-            </label>
-            <p className="mt-1 text-xs text-slate-500">
-              {identifierMetaMap[identifierType].helper}
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="theme-btn-primary w-full px-4 py-2.5 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? "Requesting OTP..." : "Request OTP"}
-          </button>
-        </form>
-
-        {otpRequested ? (
-          <form
-            onSubmit={handleVerifyOtp}
-            className="mt-6 space-y-4 border-t border-slate-200 pt-5"
-          >
-            <label className="block text-sm font-medium text-slate-700">
-              Enter OTP
-              <input
-                value={otp}
-                onChange={(event) => setOtp(sanitizeOtp(event.target.value))}
-                inputMode="numeric"
-                placeholder="Enter 6-digit OTP"
-                className="theme-input mt-1 text-center tracking-[0.3em]"
-                maxLength={6}
-                required
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-emerald-500 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Verifying OTP..." : "Verify OTP"}
-            </button>
-          </form>
-        ) : null}
-
-        {message ? (
-          <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            {message}
-          </p>
-        ) : null}
-        {error ? (
-          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {error}
-          </p>
-        ) : null}
+              <CardFooter className="flex-col items-stretch gap-3">
+                {step === "mobile" ? (
+                  <Button
+                    onClick={sendOtp}
+                    disabled={isSending || mobile.length !== 10}
+                    size="lg"
+                    className="bg-[#0b2e59] text-white hover:bg-[#1f6aa5] focus-visible:ring-[#1f6aa5]/60"
+                  >
+                    {isSending ? "Sending OTP..." : "Send OTP"}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={verifyOtp}
+                      disabled={isVerifying || otp.length !== 6}
+                      size="lg"
+                      className="bg-[#0b2e59] text-white hover:bg-[#1f6aa5] focus-visible:ring-[#1f6aa5]/60"
+                    >
+                      {isVerifying ? "Verifying..." : "Login"}
+                    </Button>
+                    <div className="flex flex-col items-start justify-between gap-2 text-sm text-slate-700 sm:flex-row sm:items-center">
+                      <Button
+                        variant="ghost"
+                        className="h-auto px-0 py-0 text-[#0b2e59] hover:bg-transparent hover:text-[#1f6aa5]"
+                        onClick={reset}
+                      >
+                        Change number
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-auto border-[#c3d2e6] bg-white px-2 py-1 text-[#0b2e59] hover:bg-[#eef4fb]"
+                        onClick={resendOtp}
+                        disabled={isSending || countdown > 0}
+                      >
+                        {countdown > 0
+                          ? `Resend in ${countdown}s`
+                          : "Resend OTP"}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardFooter>
+            </>
+          </Card>
+        </section>
       </div>
-    </section>
+    </main>
   );
 }

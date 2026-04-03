@@ -1,41 +1,50 @@
-const {
-  requestLoginOtp,
-  verifyLoginOtp,
-  getProfileByToken,
-} = require("../services/authService");
-const { ok } = require("../utils/apiResponse");
+const { HTTP_STATUS } = require("../constants/httpStatus");
 
-async function requestOtp(req, res, next) {
-  try {
-    const { identifierType, identifierValue } = req.body;
-    const data = await requestLoginOtp({ identifierType, identifierValue });
-    return ok(res, data, "OTP generated", 200);
-  } catch (error) {
-    return next(error);
+class AuthController {
+  constructor(authService) {
+    this.authService = authService;
+    this.requestOtp = this.requestOtp.bind(this);
+    this.verifyOtp = this.verifyOtp.bind(this);
+    this.getProfile = this.getProfile.bind(this);
+  }
+
+  async requestOtp(req, res, next) {
+    try {
+      const result = await this.authService.requestOtp(req.body);
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async verifyOtp(req, res, next) {
+    try {
+      const result = await this.authService.verifyOtp(req.body);
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async getProfile(req, res, next) {
+    try {
+      const result = await this.authService.getProfileByMobile(
+        req.params.mobile,
+      );
+      
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return next(error);
+    }
   }
 }
-
-async function verifyOtp(req, res, next) {
-  try {
-    const { identifierType, identifierValue, otp } = req.body;
-    const data = await verifyLoginOtp({ identifierType, identifierValue, otp });
-    return ok(res, data, "OTP verified. Login successful", 200);
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function getProfile(req, res, next) {
-  try {
-    const data = await getProfileByToken(req.headers.authorization);
-    return ok(res, data, "Profile fetched", 200);
-  } catch (error) {
-    return next(error);
-  }
-}
-
-module.exports = {
-  requestOtp,
-  verifyOtp,
-  getProfile,
-};
+module.exports = { AuthController };

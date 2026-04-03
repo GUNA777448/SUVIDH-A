@@ -1,65 +1,50 @@
 const express = require("express");
+const helmet = require("helmet");
 const cors = require("cors");
-const authRoutes = require("./routes/authRoutes");
+const morgan = require("morgan");
+
+const {
+  rootHandler,
+  healthHandler,
+} = require("./controllers/systemController");
+const { AuthController } = require("./controllers/authController");
+const { UserRepository } = require("./repositories/userRepository");
+const { OtpRepository } = require("./repositories/otpRepository");
+const { EmailService } = require("./services/emailService");
+const { AuthService } = require("./services/authService");
+const { createRoutes } = require("./routes");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
+const { env } = require("./config/env");
 
-const app = express();
+function createApp() {
+  const app = express();
 
-const localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+  app.use(helmet());
+  app.use(cors());
+  app.use(morgan("combined"));
+  app.use(express.json({ limit: "1mb" }));
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
+  const userRepository = new UserRepository();
+  const otpRepository = new OtpRepository();
+  const emailService = new EmailService();
+  const authService = new AuthService(
+    userRepository,
+    otpRepository,
+    emailService,
+    env.otpRateLimitMax,
+  );
+  const authController = new AuthController(authService);
 
-  if (!origin || localhostOriginPattern.test(origin)) {
-    return next();
-  }
+  app.locals.userRepository = userRepository;
 
-  return res.status(403).json({
-    success: false,
-    error: {
-      code: "CORS_FORBIDDEN",
-      message: "Only localhost origins are allowed",
-      details: { origin },
-    },
-  });
-});
+  app.get("/", rootHandler);
+  app.get("/health", healthHandler);
+  app.use(createRoutes(authController));
 
-const corsOptions = {
-  origin(origin, callback) {
-    // Allow requests without an Origin (curl/Postman/server-to-server).
-    if (!origin) {
-      return callback(null, true);
-    }
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
-    if (localhostOriginPattern.test(origin)) {
-      return callback(null, true);
-    }
+  return app;
+}
 
-    return callback(null, false);
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-
-app.options("*", cors(corsOptions));
-
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.json({ service: "auth", status: "running" });
-});
-
-app.get("/health", (req, res) => {
-  res.json({ status: "OK", timestamp: new Date().toISOString() });
-});
-
-app.use("/api/v1/auth", authRoutes);
-app.use("/auth", authRoutes);
-
-app.use(notFoundHandler);
-app.use(errorHandler);
-
-module.exports = app;
+module.exports = { createApp };

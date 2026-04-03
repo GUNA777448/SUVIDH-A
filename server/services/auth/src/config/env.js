@@ -1,15 +1,46 @@
-const port = Number(process.env.PORT) || 4009;
-const jwtSecret = process.env.JWT_SECRET || "change_me";
-const jwtExpiresIn = process.env.JWT_EXPIRES_IN || "1h";
-const otpProviderUrl =
-  process.env.OTP_PROVIDER_URL ||
-  "https://script.google.com/macros/s/AKfycbwVaewijYkVjInBkoLBWXy5c-FYSWJqc4BR0URsNO1Pu_wlDH6XwpSPkgRS1diVBbd07w/exec";
-const redisUrl = process.env.REDIS_URL || process.env.REID_URL || "";
+const fs = require("fs");
+const path = require("path");
 
-module.exports = {
-  port,
-  jwtSecret,
-  jwtExpiresIn,
-  otpProviderUrl,
-  redisUrl,
+function loadEnvFile() {
+  const envPath = path.resolve(__dirname, "..", "..", ".env");
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+
+  const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const separator = line.indexOf("=");
+    if (separator <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadEnvFile();
+
+const env = {
+  nodeEnv: process.env.NODE_ENV || "development",
+  port: Number(process.env.PORT) || 4009,
+  databaseUrl: process.env.DATABASE_URL,
+  redisUrl: process.env.REDIS_URL,
+  otpProviderUrl: process.env.OTP_PROVIDER_URL,
+  otpTtlSeconds: Number(process.env.OTP_TTL_SECONDS) || 300,
+  otpRateLimitMax: Number(process.env.OTP_RATE_LIMIT_MAX) || 5,
+  otpRateLimitWindowSeconds:
+    Number(process.env.OTP_RATE_LIMIT_WINDOW_SECONDS) || 300,
+  otpSecret: process.env.OTP_SECRET || process.env.JWT_SECRET || "change-me",
 };
+
+module.exports = { env };

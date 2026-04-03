@@ -39,7 +39,6 @@ SUVIDHA is a unified civic service kiosk platform for Indian urban utility offic
 
 ```
 SUVIDHA/
-├── api-gateway/                  # API gateway service
 ├── client/                       # React + Vite frontend
 ├── server/                       # Backend services
 │   └── services/
@@ -92,7 +91,6 @@ SUVIDHA/
    ```bash
    # Copy example env files
    cp server/.env.example server/.env
-   cp api-gateway/.env.example api-gateway/.env
    ```
 
 4. **Start the Development Environment**
@@ -120,11 +118,7 @@ SUVIDHA/
    cd client
    npm run dev
 
-   # Terminal 2 - API Gateway
-   cd api-gateway
-   npm run dev
-
-   # Terminal 3 - Auth Service
+   # Terminal 2 - Auth Service
    cd server/services/auth-service
    npm run dev
 
@@ -139,9 +133,8 @@ SUVIDHA/
 
 5. **Access the Application**
    - **Frontend**: http://localhost:3000
-   - **API Gateway**: http://localhost:5000
-   - **Health Check**: http://localhost:5000/health
-   - **Services Health**: http://localhost:5000/health/services
+   - **Auth Service**: http://localhost:5001
+   - **Health Check**: http://localhost:5001/health
 
 ## 📚 Documentation
 
@@ -232,6 +225,25 @@ We welcome contributions! Please follow these steps:
 4. Commit your changes (`git commit -m 'Add amazing feature'`)
 5. Push to the branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
+
+### Collaboration Branch Strategy
+
+Use the following branch setup while working collaboratively:
+
+- `main`: Production-ready code only. Direct pushes are not allowed.
+- `develop`: Integration branch for completed feature work.
+- `feature/<short-name>`: New features (for example: `feature/electricity-billing-api`).
+- `bugfix/<short-name>`: Non-critical fixes during development.
+- `hotfix/<short-name>`: Urgent fixes for production issues, branched from `main`.
+- `release/<version>`: Release preparation and final QA (for example: `release/v1.2.0`).
+
+Workflow note:
+
+1. Create `feature/*` or `bugfix/*` from `develop`.
+2. Open PR into `develop`.
+3. Use `release/*` when preparing deployment.
+4. Merge approved release into `main` and back-merge into `develop`.
+5. Use `hotfix/*` from `main` only for urgent production fixes.
 
 ### Code Standards
 

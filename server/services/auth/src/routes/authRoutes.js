@@ -1,14 +1,16 @@
 const express = require("express");
 const {
-  requestOtp,
-  verifyOtp,
-  getProfile,
-} = require("../controllers/authController");
+  requestOtpRateLimiter,
+} = require("../middleware/requestOtpRateLimiter");
 
-const router = express.Router();
+function createAuthRoutes(authController) {
+  const router = express.Router();
 
-router.post("/login/otp", requestOtp);
-router.post("/login/verify", verifyOtp);
-router.get("/profile", getProfile);
+  router.post("/request/otp", requestOtpRateLimiter, authController.requestOtp);
+  router.post("/verify/otp", authController.verifyOtp);
+  router.get("/profile/:mobile", authController.getProfile);
 
-module.exports = router;
+  return router;
+}
+
+module.exports = { createAuthRoutes };

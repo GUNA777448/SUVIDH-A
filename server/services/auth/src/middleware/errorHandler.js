@@ -1,22 +1,28 @@
+const { HTTP_STATUS } = require("../constants/httpStatus");
+
 function notFoundHandler(req, res) {
-  res.status(404).json({
+  return res.status(HTTP_STATUS.NOT_FOUND).json({
     success: false,
     error: {
-      code: "ROUTE_NOT_FOUND",
+      code: "NOT_FOUND",
       message: "Route not found",
+      path: req.originalUrl,
     },
   });
 }
 
 function errorHandler(err, req, res, next) {
-  const statusCode = err.statusCode || 500;
+  if (res.headersSent) {
+    return next(err);
+  }
 
-  res.status(statusCode).json({
+  const statusCode = err.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
+
+  return res.status(statusCode).json({
     success: false,
     error: {
       code: err.code || "INTERNAL_SERVER_ERROR",
-      message: err.message || "Internal Server Error",
-      details: err.details || null,
+      message: err.message || "An unexpected error occurred",
     },
   });
 }
