@@ -1,6 +1,6 @@
 const crypto = require("crypto");
+const { env } = require("../config/env");
 
-const HARD_CODED_PAYMENT_PIN = "1234";
 const intentsById = new Map();
 const intentsByIdempotencyKey = new Map();
 
@@ -170,7 +170,7 @@ async function confirmPaymentIntent(req, res, next) {
       });
     }
 
-    if (pin !== HARD_CODED_PAYMENT_PIN) {
+    if (pin !== env.paymentPin) {
       return res.status(401).json({
         success: false,
         message: "Invalid payment PIN",
