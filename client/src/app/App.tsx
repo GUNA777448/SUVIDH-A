@@ -5,11 +5,12 @@ import { BottomNav } from "../components/navigation/BottomNav";
 export default function App() {
   const location = useLocation();
   const isServiceRoute = location.pathname.startsWith("/services");
+  const shouldShowBottomNav = location.pathname !== "/";
 
   return (
     <div className={isServiceRoute ? "service-scope" : undefined}>
       <AppRoutes />
-      <BottomNav />
+      {shouldShowBottomNav ? <BottomNav /> : null}
     </div>
   );
 }
