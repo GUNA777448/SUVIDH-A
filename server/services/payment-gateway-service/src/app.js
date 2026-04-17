@@ -6,8 +6,22 @@ const { env } = require("./config/env");
 const { paymentRouter } = require("./routes/paymentRoutes");
 
 const app = express();
+const ALLOWED_ORIGINS = new Set([
+  "https://suvidh-a.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://m5z408t6-5173.inc1.devtunnels.ms",
+]);
+
 const CORS_OPTIONS = {
-  origin: true,
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
