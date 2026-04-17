@@ -1,8 +1,20 @@
 const express = require("express");
-const { getOverview } = require("../controllers/electricityController");
 
-const router = express.Router();
+const electricityRouter = express.Router();
 
-router.get("/overview", getOverview);
+electricityRouter.get("/overview", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    service: "electricity-service",
+    scope: "electricity",
+    message: "Electricity service overview",
+    capabilities: [
+      "billing",
+      "meter connections",
+      "outage updates",
+      "service requests",
+    ],
+  });
+});
 
-module.exports = router;
+module.exports = { electricityRouter };

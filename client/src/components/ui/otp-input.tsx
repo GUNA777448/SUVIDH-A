@@ -56,9 +56,21 @@ export function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
               }
             }}
             className={cn(
-              "h-12 w-full rounded-xl border border-slate-300 bg-white/90 text-center text-lg font-semibold text-slate-900",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1f6aa5]/35 focus-visible:border-[#1f6aa5]",
+              "h-12 w-full rounded-xl border font-semibold text-center text-lg",
             )}
+            style={{
+              borderColor: "#1977F3",
+              backgroundColor: "#F4F6FB",
+              color: "#1977F3",
+            }}
+            onFocus={(e) => {
+              (e.target as HTMLInputElement).style.outline = "none";
+              (e.target as HTMLInputElement).style.boxShadow =
+                "0 0 0 2px rgba(25, 119, 243, 0.5)";
+            }}
+            onBlur={(e) => {
+              (e.target as HTMLInputElement).style.boxShadow = "none";
+            }}
           />
         );
       })}

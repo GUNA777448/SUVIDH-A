@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "logo-design": {
+      "source": "atypica-ai/marketing-skills",
+      "sourceType": "github",
+      "computedHash": "18bab3a2029d7e5f305af4272f2b6b0ede0df8e85bacdb89b1ea659464b7fd4d"
+    }
+  }
+}

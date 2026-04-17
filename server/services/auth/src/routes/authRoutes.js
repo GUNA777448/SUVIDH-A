@@ -1,16 +1,31 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const {
-  requestOtpRateLimiter,
-} = require("../middleware/requestOtpRateLimiter");
+  register,
+  login,
+  verifyOtp,
+  getProfile,
+  getProfileByUserId,
+} = require("../controllers/authController");
 
-function createAuthRoutes(authController) {
-  const router = express.Router();
+const authRouter = express.Router();
 
-  router.post("/request/otp", requestOtpRateLimiter, authController.requestOtp);
-  router.post("/verify/otp", authController.verifyOtp);
-  router.get("/profile/:mobile", authController.getProfile);
+const otpRequestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please wait before retrying.",
+  },
+});
 
-  return router;
-}
+authRouter.post("/register", register);
+authRouter.post("/login", otpRequestLimiter, login);
+authRouter.post("/verify/otp", verifyOtp);
+authRouter.get("/profile/userid=:userId", getProfileByUserId);
+authRouter.get("/profile/userid/:userId", getProfileByUserId);
+authRouter.get("/profile/:mobile(\\d{10})", getProfile);
 
-module.exports = { createAuthRoutes };
+module.exports = { authRouter };

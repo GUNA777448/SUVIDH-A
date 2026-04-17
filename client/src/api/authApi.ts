@@ -23,26 +23,29 @@ type VerifyOtpInput = RequestOtpInput & {
   otp: string;
 };
 
+type RegisterInput = {
+  name: string;
+  email: string;
+  mobile: string;
+  aadhar?: string | null;
+};
+
 export type RequestOtpResponse = {
   message: string;
-  identifier: "mobile";
-  value: string;
-  email: string;
-  ttlSeconds: number;
+  mobile: string;
+  otp_expiry_seconds: number;
 };
 
 export type VerifyOtpResponse = {
-  message: string;
-  identifier: "mobile";
-  value: string;
+  token: string;
   user: {
     id: string;
     name: string;
     mobile: string;
-    gmail: string;
-    aadharnumber: string;
-    consumer_id: string;
+    email: string;
+    aadhar: string | null;
     created_at: string;
+    updated_at: string;
   };
 };
 
@@ -52,11 +55,24 @@ export type ProfileResponse = {
     id: string;
     name: string;
     mobile: string;
-    gmail: string;
-    aadharnumber: string;
-    consumer_id: string;
+    email: string;
+    aadhar: string | null;
     created_at: string;
+    updated_at: string;
   };
+};
+
+export type RegisterResponse = {
+  user: {
+    id: string;
+    name: string;
+    mobile: string;
+    email: string;
+    aadhar: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  created: boolean;
 };
 
 export class AuthApiError extends Error {
@@ -73,6 +89,18 @@ function buildUrl(path: string) {
   return `${API_BASE_URL.replace(/\/$/, "")}${AUTH_API_PREFIX}${path}`;
 }
 
+function parseJsonSafely(bodyText: string) {
+  if (!bodyText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    return null;
+  }
+}
+
 async function postJson<TResponse>(
   path: string,
   payload: Record<string, unknown>,
@@ -86,12 +114,13 @@ async function postJson<TResponse>(
   });
 
   const bodyText = await response.text();
-  const parsedBody = bodyText ? JSON.parse(bodyText) : null;
+  const parsedBody = parseJsonSafely(bodyText);
 
   if (!response.ok) {
     const errorBody = parsedBody as ApiErrorEnvelope | null;
     const errorMessage =
       errorBody?.error?.message ||
+      (bodyText && bodyText.slice(0, 120)) ||
       `Request failed with status ${response.status}`;
     const errorCode = errorBody?.error?.code || "API_ERROR";
     throw new AuthApiError(errorMessage, errorCode);
@@ -114,7 +143,7 @@ async function getJson<TResponse>(path: string): Promise<TResponse> {
   });
 
   const bodyText = await response.text();
-  const parsedBody = bodyText ? JSON.parse(bodyText) : null;
+  const parsedBody = parseJsonSafely(bodyText);
 
   if (!response.ok) {
     const errorBody = parsedBody as ApiErrorEnvelope | null;
@@ -134,13 +163,41 @@ async function getJson<TResponse>(path: string): Promise<TResponse> {
 }
 
 export function requestOtp(payload: RequestOtpInput) {
-  return postJson<RequestOtpResponse>("/request/otp", payload);
+  return postJson<RequestOtpResponse>("/login", {
+    identifier: "M",
+    value: payload.value,
+  });
+}
+
+export function registerUser(payload: RegisterInput) {
+  return postJson<RegisterResponse>("/register", {
+    name: payload.name,
+    email: payload.email,
+    mobile: payload.mobile,
+    aadhar: payload.aadhar ?? null,
+  });
 }
 
 export function verifyOtp(payload: VerifyOtpInput) {
-  return postJson<VerifyOtpResponse>("/verify/otp", payload);
+  return postJson<VerifyOtpResponse>("/verify/otp", {
+    mobile: payload.value,
+    otp: payload.otp,
+  });
 }
 
-export function getProfile(mobile: string) {
-  return getJson<ProfileResponse>(`/profile/${encodeURIComponent(mobile)}`);
+export function getProfileByUserId(userId: string) {
+  const encodedUserId = encodeURIComponent(userId);
+
+  return getJson<ProfileResponse>(`/profile/userid=${encodedUserId}`).catch(
+    (error: unknown) => {
+      if (
+        error instanceof AuthApiError &&
+        error.message.includes("status 404")
+      ) {
+        return getJson<ProfileResponse>(`/profile/userid/${encodedUserId}`);
+      }
+
+      throw error;
+    },
+  );
 }

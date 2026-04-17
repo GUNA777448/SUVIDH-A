@@ -1,0 +1,2 @@
+-- Water service database bootstrap placeholder.
+-- Add tables, indexes, and seed data for water workflows here.

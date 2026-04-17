@@ -1,8 +1,20 @@
 const express = require("express");
-const { getServiceOverview } = require("../controllers/waterController");
 
-const router = express.Router();
+const waterRouter = express.Router();
 
-router.get("/overview", getServiceOverview);
+waterRouter.get("/overview", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    service: "water-service",
+    scope: "water",
+    message: "Water service overview",
+    capabilities: [
+      "billing",
+      "consumption visibility",
+      "connection support",
+      "complaint handling",
+    ],
+  });
+});
 
-module.exports = router;
+module.exports = { waterRouter };

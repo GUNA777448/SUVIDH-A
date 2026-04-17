@@ -15,7 +15,7 @@ SUVIDHA is a unified civic service kiosk platform for Indian urban utility offic
 - **Frontend:** React + Vite (touch-first, multilingual, accessible UI)
 - **Backend:** Node.js/Express microservices (modular, SOLID, MVC)
 - **API Gateway:** Kong (or Express-based) for routing, security, and orchestration
-- **Database:** NeonDB (PostgreSQL, Prisma ORM)
+- **Database:** NeonDB (PostgreSQL)
 - **Authentication:** OAuth2/JWT, OTP login, multi-identifier (mobile, aadhar, consumerid)
 - **Monitoring & Logging:** OpenTelemetry, centralized logging
 - **Deployment:** Docker, Docker Compose, CI/CD ready
@@ -141,6 +141,12 @@ SUVIDHA/
 - **[Architecture Diagrams](server/ARCHITECTURE_VISUAL.md)** — Visual system architecture
 - **[Backend Launcher Guide](server/BACKEND_LAUNCHER_GUIDE.md)** — Using the backend launcher
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** — In-depth development reference
+- **[Production Rollout Playbook](docs/production-rollout-phases.md)** — Phase-by-phase execution plan to reach production
+- **[Production Phase Tracker](docs/production-phase-tracker.md)** — Execution tracker for branch status, ownership, and approvals
+- **[Environment Variable Matrix](docs/env-matrix.md)** — Required and optional environment variables by component
+- **[Secret Rotation Log Template](docs/secret-rotation-log-template.md)** — Internal template for credential rotation evidence
+- **[DB Migration Policy](docs/db-migration-policy.md)** — Migration naming, pairing, and execution standards
+- **[DB Backup and Restore Runbook](docs/db-backup-restore-runbook.md)** — Operational backup and recovery steps for migration windows
 - **[Contributing Guidelines](CONTRIBUTING.md)** — Code standards and workflow
 
 ## 🔧 Development

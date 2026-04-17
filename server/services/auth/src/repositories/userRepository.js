@@ -1,71 +1,208 @@
 const { pool } = require("../config/db");
 
 class UserRepository {
-  async initialize() {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id BIGSERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        mobile VARCHAR(20) NOT NULL UNIQUE,
-        gmail TEXT NOT NULL UNIQUE,
-        aadharnumber VARCHAR(20) NOT NULL UNIQUE,
-        consumer_id VARCHAR(50) NOT NULL UNIQUE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-
-    await pool.query(
-      "CREATE INDEX IF NOT EXISTS idx_users_gmail ON users(gmail)",
-    );
-    await pool.query(
-      "CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile)",
-    );
-    await pool.query(
-      "CREATE INDEX IF NOT EXISTS idx_users_consumer_id ON users(consumer_id)",
-    );
-    await pool.query(
-      "CREATE INDEX IF NOT EXISTS idx_users_aadhar ON users(aadharnumber)",
-    );
-  }
-
-  
-  async findByEmail(gmail) {
-    const result = await pool.query(
-      `SELECT id, name, mobile, gmail, aadharnumber, consumer_id, created_at
-       FROM users
-       WHERE gmail = $1`,
-      [gmail],
-    );
-
+  async findById(id) {
+    const query = `
+      SELECT id, name, email, mobile, aadhar, created_at, updated_at
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+    `;
+    const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
 
   async findByMobile(mobile) {
-    const result = await pool.query(
-      `SELECT id, name, mobile, gmail, aadharnumber, consumer_id, created_at
-       FROM users
-       WHERE mobile = $1`,
-      [mobile],
-    );
-
+    const query = `
+      SELECT id, name, email, mobile, aadhar, created_at, updated_at
+      FROM users
+      WHERE mobile = $1
+      LIMIT 1
+    `;
+    const result = await pool.query(query, [mobile]);
     return result.rows[0] || null;
   }
 
-  async createUser(payload) {
-    const {
-      name,
-      mobile,
-      gmail,
-      aadharnumber,
-      consumer_id: consumerId,
-    } = payload;
+  async findByEmail(email) {
+    const query = `
+      SELECT id, name, email, mobile, aadhar, created_at, updated_at
+      FROM users
+      WHERE lower(email) = lower($1)
+      LIMIT 1
+    `;
+    const result = await pool.query(query, [email]);
+    return result.rows[0] || null;
+  }
 
-    const result = await pool.query(
-      `INSERT INTO users (name, mobile, gmail, aadharnumber, consumer_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, mobile, gmail, aadharnumber, consumer_id, created_at`,
-      [name, mobile, gmail, aadharnumber, consumerId],
-    );
+  async findByAadhar(aadhar) {
+    if (!aadhar) {
+      return null;
+    }
+
+    const query = `
+      SELECT id, name, email, mobile, aadhar, created_at, updated_at
+      FROM users
+      WHERE aadhar = $1
+      LIMIT 1
+    `;
+    const result = await pool.query(query, [aadhar]);
+    return result.rows[0] || null;
+  }
+
+  async registerUser(user) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const duplicateEmail = await client.query(
+        `
+          SELECT id, mobile
+          FROM users
+          WHERE lower(email) = lower($1)
+          LIMIT 1
+        `,
+        [user.email],
+      );
+
+      if (
+        duplicateEmail.rows[0] &&
+        duplicateEmail.rows[0].mobile !== user.mobile
+      ) {
+        const error = new Error(
+          "Email is already registered with another mobile",
+        );
+        error.code = "DUPLICATE_EMAIL";
+        throw error;
+      }
+
+      if (user.aadhar) {
+        const duplicateAadhar = await client.query(
+          `
+            SELECT id, mobile
+            FROM users
+            WHERE aadhar = $1
+            LIMIT 1
+          `,
+          [user.aadhar],
+        );
+
+        if (
+          duplicateAadhar.rows[0] &&
+          duplicateAadhar.rows[0].mobile !== user.mobile
+        ) {
+          const error = new Error(
+            "Aadhar is already registered with another mobile",
+          );
+          error.code = "DUPLICATE_AADHAR";
+          throw error;
+        }
+      }
+
+      const upsertResult = await client.query(
+        `
+          INSERT INTO users (name, email, mobile, aadhar)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (mobile)
+          DO UPDATE SET
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            aadhar = EXCLUDED.aadhar,
+            updated_at = NOW()
+          RETURNING
+            id,
+            name,
+            email,
+            mobile,
+            aadhar,
+            created_at,
+            updated_at,
+            (xmax = 0) AS created
+        `,
+        [user.name, user.email, user.mobile, user.aadhar || null],
+      );
+
+      const row = upsertResult.rows[0];
+
+      if (row.created) {
+        await client.query(
+          `
+            INSERT INTO auth_outbox_events (aggregate_type, aggregate_id, event_type, payload_json)
+            VALUES ($1, $2, $3, $4::jsonb)
+          `,
+          [
+            "user",
+            row.id,
+            "auth.user.registered",
+            JSON.stringify({
+              user_id: row.id,
+              name: row.name,
+              email: row.email,
+              mobile: row.mobile,
+              aadhar: row.aadhar,
+              created_at: row.created_at,
+            }),
+          ],
+        );
+      }
+
+      await client.query(
+        `
+          INSERT INTO auth_audit_log (user_id, event_type, metadata_json)
+          VALUES ($1, $2, $3::jsonb)
+        `,
+        [
+          row.id,
+          row.created ? "auth.register.success" : "auth.register.idempotent",
+          JSON.stringify({
+            mobile: row.mobile,
+            email: row.email,
+            has_aadhar: Boolean(row.aadhar),
+          }),
+        ],
+      );
+
+      await client.query("COMMIT");
+
+      return {
+        user: {
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          mobile: row.mobile,
+          aadhar: row.aadhar,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        },
+        created: row.created,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async upsert(user) {
+    const query = `
+      INSERT INTO users (name, email, mobile, aadhar)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (mobile)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        email = EXCLUDED.email,
+        aadhar = EXCLUDED.aadhar,
+        updated_at = NOW()
+      RETURNING id, name, email, mobile, aadhar, created_at, updated_at
+    `;
+
+    const result = await pool.query(query, [
+      user.name,
+      user.email,
+      user.mobile,
+      user.aadhar || null,
+    ]);
 
     return result.rows[0];
   }

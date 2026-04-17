@@ -49,8 +49,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Prisma
-# Keep schema and migrations in Git for reproducible deployments.
+# Local database files
 *.db
 *.db-journal
 

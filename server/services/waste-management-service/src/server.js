@@ -1,6 +1,6 @@
-const app = require("./app");
-const { port } = require("./config/env");
+const { app } = require("./app");
+const { env } = require("./config/env");
 
-app.listen(port, () => {
-  console.log(`Waste Management service listening on port ${port}`);
+app.listen(env.port, () => {
+  console.log(`${env.appName} listening on port ${env.port}`);
 });

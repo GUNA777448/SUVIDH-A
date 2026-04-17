@@ -1,50 +1,39 @@
 const express = require("express");
-const helmet = require("helmet");
 const cors = require("cors");
+const helmet = require("helmet");
 const morgan = require("morgan");
+const { authRouter } = require("./routes/authRoutes");
 
-const {
-  rootHandler,
-  healthHandler,
-} = require("./controllers/systemController");
-const { AuthController } = require("./controllers/authController");
-const { UserRepository } = require("./repositories/userRepository");
-const { OtpRepository } = require("./repositories/otpRepository");
-const { EmailService } = require("./services/emailService");
-const { AuthService } = require("./services/authService");
-const { createRoutes } = require("./routes");
-const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
-const { env } = require("./config/env");
+const app = express();
+const CORS_OPTIONS = {
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "Idempotency-Key",
+  ],
+};
 
-function createApp() {
-  const app = express();
+app.use(helmet());
+app.use(cors(CORS_OPTIONS));
+app.options("*", cors(CORS_OPTIONS));
+app.use(morgan("combined"));
+app.use(express.json({ limit: "1mb" }));
 
-  app.use(helmet());
-  app.use(cors());
-  app.use(morgan("combined"));
-  app.use(express.json({ limit: "1mb" }));
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
-  const userRepository = new UserRepository();
-  const otpRepository = new OtpRepository();
-  const emailService = new EmailService();
-  const authService = new AuthService(
-    userRepository,
-    otpRepository,
-    emailService,
-    env.otpRateLimitMax,
-  );
-  const authController = new AuthController(authService);
+app.use("/api/v1/auth", authRouter);
 
-  app.locals.userRepository = userRepository;
+app.use((error, _req, res, _next) => {
+  console.error(error);
+  res.status(500).json({ success: false, message: "Internal server error" });
+});
 
-  app.get("/", rootHandler);
-  app.get("/health", healthHandler);
-  app.use(createRoutes(authController));
-
-  app.use(notFoundHandler);
-  app.use(errorHandler);
-
-  return app;
-}
-
-module.exports = { createApp };
+module.exports = { app };

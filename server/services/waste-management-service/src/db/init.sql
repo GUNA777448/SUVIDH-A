@@ -1,0 +1,2 @@
+-- Waste management service database bootstrap placeholder.
+-- Add tables, indexes, and seed data for waste workflows here.

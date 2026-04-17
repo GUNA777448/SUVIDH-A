@@ -1,58 +1,49 @@
-const { createApp } = require("./app");
+const fs = require("fs");
+const path = require("path");
+const { app } = require("./app");
 const { env } = require("./config/env");
 const { pool } = require("./config/db");
 const { redisClient } = require("./config/redis");
 
-let httpServer;
+let server;
 
-async function initializeDependencies(app) {
+async function initDb() {
+  const sqlPath = path.resolve(__dirname, "db", "init.sql");
+  const sql = fs.readFileSync(sqlPath, "utf8");
+  await pool.query(sql);
+}
+
+async function start() {
   await pool.query("SELECT 1");
-  app.locals.dbConnected = true;
-  console.log("PostgreSQL connection established");
-
-  const userRepository = app.locals.userRepository;
-  await userRepository.initialize();
-  console.log("Users table initialized");
+  await initDb();
 
   if (!redisClient.isOpen) {
     await redisClient.connect();
   }
   await redisClient.ping();
-  app.locals.redisConnected = true;
-  console.log("Redis connection established");
-}
 
-async function startServer() {
-  const app = createApp();
-  app.locals.dbConnected = false;
-  app.locals.redisConnected = false;
-
-  await initializeDependencies(app);
-
-  httpServer = app.listen(env.port, () => {
-    console.log(`Auth service listening on port ${env.port}`);
+  server = app.listen(env.port, () => {
+    console.log(`${env.appName} auth service listening on port ${env.port}`);
   });
 }
 
 async function shutdown(signal) {
-  console.log(`Received ${signal}. Shutting down auth service...`);
-
-  if (httpServer) {
-    await new Promise((resolve) => httpServer.close(resolve));
+  console.log(`Received ${signal}, shutting down...`);
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
   }
 
-  await pool.end();
   if (redisClient.isOpen) {
     await redisClient.quit();
   }
-
+  await pool.end();
   process.exit(0);
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-startServer().catch((error) => {
+start().catch((error) => {
   console.error("Failed to start auth service:", error.message);
   process.exit(1);
 });

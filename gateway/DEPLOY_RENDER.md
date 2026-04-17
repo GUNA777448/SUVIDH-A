@@ -1,6 +1,6 @@
 # Render Deployment Steps for SUVIDHA Gateway
 
-This guide deploys Kong Gateway on Render in production style (Render Postgres + Kong service + migration job).
+This guide deploys Kong Gateway on Render in a low-cost style (Render Postgres + Kong web service, with migrations run from local machine).
 
 ## 1. Prerequisites
 
@@ -14,28 +14,58 @@ This guide deploys Kong Gateway on Render in production style (Render Postgres +
 1. In Render dashboard, create a new PostgreSQL instance.
 2. Name it (example: `kong-db`).
 3. Save these values from the database info page:
-   - Host
-   - Port
-   - Database name
-   - User
-   - Password
 
-## 3. Create Kong Migration Job (one-time)
+- Host
+- Port
+- Database name
+- User
+- Password
 
-1. Create a new Render Background Worker (or One-off Job) from Docker image:
-   - Image: `kong:latest`
-2. Set Start Command:
-   - `kong migrations bootstrap`
-3. Add environment variables:
-   - `KONG_DATABASE=postgres`
-   - `KONG_PG_HOST=<render-postgres-host>`
-   - `KONG_PG_PORT=<render-postgres-port>`
-   - `KONG_PG_DATABASE=<render-postgres-database>`
-   - `KONG_PG_USER=<render-postgres-user>`
-   - `KONG_PG_PASSWORD=<render-postgres-password>`
-4. Run the job once and confirm it succeeds.
+## 3. Run Kong Migration Once (no paid Render job)
 
-Note: For future schema updates use `kong migrations up` and then `kong migrations finish` as needed.
+If Render Jobs/Workers are paid in your plan, skip creating a migration worker.
+Run Kong migrations from your local machine one-time against Render Postgres.
+
+### 3.1 Bootstrap migration (first time only)
+
+```bash
+docker run --rm \
+  -e KONG_DATABASE=postgres \
+  -e KONG_PG_HOST=<render-postgres-host> \
+  -e KONG_PG_PORT=<render-postgres-port> \
+  -e KONG_PG_DATABASE=<render-postgres-database> \
+  -e KONG_PG_USER=<render-postgres-user> \
+  -e KONG_PG_PASSWORD=<render-postgres-password> \
+  kong:latest kong migrations bootstrap
+```
+
+### 3.2 Future upgrades (only when Kong version changes)
+
+```bash
+docker run --rm \
+  -e KONG_DATABASE=postgres \
+  -e KONG_PG_HOST=<render-postgres-host> \
+  -e KONG_PG_PORT=<render-postgres-port> \
+  -e KONG_PG_DATABASE=<render-postgres-database> \
+  -e KONG_PG_USER=<render-postgres-user> \
+  -e KONG_PG_PASSWORD=<render-postgres-password> \
+  kong:latest kong migrations up
+
+docker run --rm \
+  -e KONG_DATABASE=postgres \
+  -e KONG_PG_HOST=<render-postgres-host> \
+  -e KONG_PG_PORT=<render-postgres-port> \
+  -e KONG_PG_DATABASE=<render-postgres-database> \
+  -e KONG_PG_USER=<render-postgres-user> \
+  -e KONG_PG_PASSWORD=<render-postgres-password> \
+  kong:latest kong migrations finish
+```
+
+### 3.3 Verify migration success
+
+- You should see success logs from the migration commands.
+- If bootstrap already ran earlier, do not rerun bootstrap.
+- Keep this as a manual release step to avoid paid worker usage.
 
 ## 4. Create Kong Web Service on Render
 
