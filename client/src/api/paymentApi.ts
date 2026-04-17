@@ -311,7 +311,7 @@ export async function createPaymentIntent(params: {
   } catch (error) {
     if (error instanceof TypeError) {
       throw new PaymentApiError(
-        "Payment service is unreachable. Start payment service on http://localhost:4005.",
+        "Payment service is unreachable. Verify the payment API endpoint and gateway are running.",
         "PAYMENT_SERVICE_UNREACHABLE",
       );
     }

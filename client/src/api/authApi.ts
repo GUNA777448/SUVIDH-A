@@ -1,4 +1,4 @@
-import { API_BASE_URL, AUTH_API_PREFIX } from "../config/env";
+import { API_BASE_URL, AUTH_API_PREFIX, AUTH_SERVICE_URL } from "../config/env";
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -86,7 +86,14 @@ export class AuthApiError extends Error {
 }
 
 function buildUrl(path: string) {
-  return `${API_BASE_URL.replace(/\/$/, "")}${AUTH_API_PREFIX}${path}`;
+  const normalizedPrefix = AUTH_API_PREFIX.trim();
+
+  if (/^https?:\/\//i.test(normalizedPrefix)) {
+    return `${normalizedPrefix.replace(/\/$/, "")}${path}`;
+  }
+
+  const authBaseUrl = AUTH_SERVICE_URL.trim() || API_BASE_URL;
+  return `${authBaseUrl.replace(/\/$/, "")}${normalizedPrefix}${path}`;
 }
 
 function parseJsonSafely(bodyText: string) {
